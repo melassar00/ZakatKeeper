@@ -18,20 +18,24 @@ import {
     TableBody,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { ZakatService } from "./services/zakat";
+// import { ZakatService } from "./services/zakat";
 import React, { useState } from "react";
 import Calendar, { CalendarProps } from "react-calendar";
 import moment from "moment-hijri";
 import "react-calendar/dist/Calendar.css";
-import { Year } from "../../types/years";
+import { ZakatYear } from "../../types/years";
 import Stepper from "@mui/material/Stepper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
+import { useUserContext } from "../../context/UserContext";
 
 const steps = ["Enter Assets", "Enter Liabilities", "Zakat Results"];
 
 export default function HomePage() {
     const [date, setDate] = useState<Date>(new Date());
+    const { user } = useUserContext();
+    const [zakatThisYear, setZakatThisYear] = useState<ZakatYear | undefined>(undefined);
+
     moment.locale("en");
     const handleChange: CalendarProps["onChange"] = (value) => {
         // value can be null, Date, or [Date, Date]
@@ -88,7 +92,7 @@ export default function HomePage() {
     };
 
     // Example data: you can later replace this with dynamic data or API calls
-    const currentYear = new Date().getFullYear();
+    const currentYear = new Date().getFullYear().toString();
     const currentZakat = 650; // Replace with your calculated logic
 
     const handleAddZakat = () => {
@@ -96,106 +100,126 @@ export default function HomePage() {
         alert("Add or update today's Zakat record!");
     };
 
-    const [accordionData, setAccordionData] = React.useState([] as Year[]);
+    const [accordionData, setAccordionData] = React.useState([] as ZakatYear[]);
 
     React.useEffect(() => {
-        ZakatService.getZakat("omar").then((result) => {
-            var tempYears = result.years;
-            tempYears.sort((a, b) => b.year.localeCompare(a.year));
-
-            var tempAccordionData = [] as Year[];
-            for (var i = 0; i < tempYears.length; i++) {
-                if (tempYears[i].year != moment().year.toString()) {
-                    var tempAccordion = {
-                        year: tempYears[i].year,
-                        accountBalances: tempYears[i].accountBalances,
-                        totalAssetValue: tempYears[i].totalAssetValue,
-                        totalDebtValue: tempYears[i].totalDebtValue,
-                        zakatDueOn: tempYears[i].zakatDueOn,
-                    };
-                    tempAccordionData[i] = tempAccordion;
-                }
-            }
-            setAccordionData(tempAccordionData);
-        });
+        if (user) {
+            const zakat = user.years.find((year) => year.year === currentYear);
+            setZakatThisYear(zakatThisYear);
+            // var tempYears = user.years;
+            // tempYears.sort((a, b) => b.year.localeCompare(a.year));
+            // var tempAccordionData = [] as Year[];
+            // for (var i = 0; i < tempYears.length; i++) {
+            //     if (tempYears[i].year != moment().year.toString()) {
+            //         var tempAccordion = {
+            //             year: tempYears[i].year,
+            //             accountBalances: tempYears[i].accountBalances,
+            //             totalAssetValue: tempYears[i].totalAssetValue,
+            //             totalDebtValue: tempYears[i].totalDebtValue,
+            //             zakatDueOn: tempYears[i].zakatDueOn,
+            //         };
+            //         tempAccordionData[i] = tempAccordion;
+            //     }
+            // }
+            // setAccordionData(tempAccordionData);
+        }
     }, []);
+
+    const handleBeginClick = () => {
+        setZakatThisYear({
+            year: currentYear,
+            accountBalances: [],
+            status: "IN_PROGRESS",
+            totalAssetValue: 0,
+            totalDebtValue: 0,
+            zakatDueOn: 0,
+        });
+    };
+
     return (
         <Container maxWidth="md" sx={{ mt: 4 }}>
             <Typography variant="h4" gutterBottom>
                 Welcome to ZakatKeeper
             </Typography>
-            <Card sx={{ mb: 4 }}>
-                <CardContent>
-                    <Box sx={{ width: "100%" }}>
-                        <Stepper activeStep={activeStep}>
-                            {steps.map((label, index) => {
-                                const stepProps: { completed?: boolean } = {};
-                                const labelProps: {
-                                    optional?: React.ReactNode;
-                                } = {};
-                                if (isStepOptional(index)) {
-                                    labelProps.optional = <Typography variant="caption">Optional</Typography>;
-                                }
-                                if (isStepSkipped(index)) {
-                                    stepProps.completed = false;
-                                }
-                                return (
-                                    <Step key={label} {...stepProps}>
-                                        <StepLabel {...labelProps}>{label}</StepLabel>
-                                    </Step>
-                                );
-                            })}
-                        </Stepper>
-                        {activeStep === steps.length && (
-                            <React.Fragment>
-                                <Typography sx={{ mt: 2, mb: 1 }}>All steps completed - you&apos;re finished</Typography>
-                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
-                                    <Box sx={{ flex: "1 1 auto" }} />
-                                    <Button onClick={handleReset}>Reset</Button>
-                                </Box>
-                            </React.Fragment>
-                        )}
-                        {activeStep === steps.length - 1 && (
-                            <React.Fragment>
-                                <Typography variant="h6">Zakat Due for {currentYear}:</Typography>
-                                <Typography variant="h4" color="primary">
-                                    ${currentZakat}
-                                </Typography>
-                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
-                                    <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
-                                        Back
-                                    </Button>
-                                    <Box sx={{ flex: "1 1 auto" }} />
-                                    {isStepOptional(activeStep) && (
-                                        <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
-                                            Skip
+            {zakatThisYear ? (
+                <Card sx={{ mb: 4 }}>
+                    <CardContent>
+                        <Box sx={{ width: "100%" }}>
+                            <Stepper activeStep={activeStep}>
+                                {steps.map((label, index) => {
+                                    const stepProps: { completed?: boolean } = {};
+                                    const labelProps: {
+                                        optional?: React.ReactNode;
+                                    } = {};
+                                    if (isStepOptional(index)) {
+                                        labelProps.optional = <Typography variant="caption">Optional</Typography>;
+                                    }
+                                    if (isStepSkipped(index)) {
+                                        stepProps.completed = false;
+                                    }
+                                    return (
+                                        <Step key={label} {...stepProps}>
+                                            <StepLabel {...labelProps}>{label}</StepLabel>
+                                        </Step>
+                                    );
+                                })}
+                            </Stepper>
+                            {activeStep === steps.length && (
+                                <React.Fragment>
+                                    <Typography sx={{ mt: 2, mb: 1 }}>All steps completed - you&apos;re finished</Typography>
+                                    <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                        <Box sx={{ flex: "1 1 auto" }} />
+                                        <Button onClick={handleReset}>Reset</Button>
+                                    </Box>
+                                </React.Fragment>
+                            )}
+                            {activeStep === steps.length - 1 && (
+                                <React.Fragment>
+                                    <Typography variant="h6">Zakat Due for {currentYear}:</Typography>
+                                    <Typography variant="h4" color="primary">
+                                        ${currentZakat}
+                                    </Typography>
+                                    <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                        <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
+                                            Back
                                         </Button>
-                                    )}
-                                    <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
-                                </Box>
-                            </React.Fragment>
-                        )}
+                                        <Box sx={{ flex: "1 1 auto" }} />
+                                        {isStepOptional(activeStep) && (
+                                            <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
+                                                Skip
+                                            </Button>
+                                        )}
+                                        <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
+                                    </Box>
+                                </React.Fragment>
+                            )}
 
-                        {activeStep < steps.length - 1 && (
-                            <React.Fragment>
-                                <Typography sx={{ mt: 2, mb: 1 }}>Step {activeStep + 1}</Typography>
-                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
-                                    <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
-                                        Back
-                                    </Button>
-                                    <Box sx={{ flex: "1 1 auto" }} />
-                                    {isStepOptional(activeStep) && (
-                                        <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
-                                            Skip
+                            {activeStep < steps.length - 1 && (
+                                <React.Fragment>
+                                    <Typography sx={{ mt: 2, mb: 1 }}>Step {activeStep + 1}</Typography>
+                                    <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                        <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
+                                            Back
                                         </Button>
-                                    )}
-                                    <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
-                                </Box>
-                            </React.Fragment>
-                        )}
-                    </Box>
-                </CardContent>
-            </Card>
+                                        <Box sx={{ flex: "1 1 auto" }} />
+                                        {isStepOptional(activeStep) && (
+                                            <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
+                                                Skip
+                                            </Button>
+                                        )}
+                                        <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
+                                    </Box>
+                                </React.Fragment>
+                            )}
+                        </Box>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Button variant="contained" onClick={handleBeginClick}>
+                    Calculate your {currentYear} Zakat
+                </Button>
+            )}
+
             <>
                 {accordionData.map((item, index) => (
                     <Accordion key={index}>
@@ -227,13 +251,13 @@ export default function HomePage() {
                     </Accordion>
                 ))}
             </>
-            TODO - Move this somewhere else Select Zakat Due Date
+            {/* TODO - Move this somewhere else Select Zakat Due Date
             <Calendar onChange={handleChange} value={date} />
             <div style={{ marginTop: "1rem" }}>
                 <strong>Gregorian:</strong> {moment(date).format("DD of MMMM")}
                 <br />
                 <strong>Hijri:</strong> {moment(date).format("iDD of iMMMM")}
-            </div>
+            </div> */}
         </Container>
     );
 }

@@ -1,9 +1,8 @@
-// types/user.ts
 import { ObjectId } from "mongodb";
-import { Year } from "./years";
+import { ZakatYear } from "./years";
 
 export interface Zakat {
     _id?: ObjectId;
     userID: string;
-    years: Year[];
+    years: ZakatYear[];
 }
