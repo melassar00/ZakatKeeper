@@ -1,6 +1,7 @@
 // app/api/zakat/[userID]/route.ts
 import { connectToDB } from "../../../../../lib/mongodb";
 import { NextResponse } from "next/server";
+import { Zakat } from "../../../../../types/zakat";
 
 export async function GET(req: Request, { params }: { params: { userID: string } }) {
     const { userID } = await params;
@@ -10,6 +11,23 @@ export async function GET(req: Request, { params }: { params: { userID: string }
 
         const user = await db.collection("zakat").findOne({ userID });
 
+        if (!user) {
+            return NextResponse.json({ error: "Zakat entry not found" }, { status: 404 });
+        }
+
+        return NextResponse.json(user);
+    } catch (err) {
+        console.error("Error fetching user:", err);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+}
+
+export async function PUT(req: Request) {
+    const zakat: Zakat = await req.json(); // get full zakat object from request body
+    const { userID, _id, ...updateData } = zakat;
+    try {
+        const db = await connectToDB();
+        const user = await db.collection("zakat").findOneAndUpdate({ userID }, { $set: updateData }, { returnDocument: "after" });
         if (!user) {
             return NextResponse.json({ error: "Zakat entry not found" }, { status: 404 });
         }

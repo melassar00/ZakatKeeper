@@ -1,6 +1,8 @@
 import { Double } from "mongodb";
 
 export interface AccountBalance {
+    id: number;
     name: string;
-    balance: Double;
+    type: string;
+    balance: number;
 }

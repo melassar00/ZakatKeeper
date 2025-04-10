@@ -5,7 +5,7 @@ import { Debt } from "./debt";
 export interface ZakatYear {
     year: string;
     accountBalances: AccountBalance[];
-    debtsOwed?: Debt[];
+    debtsOwed?: AccountBalance[];
     totalAssetValue: number;
     totalDebtValue: number;
     zakatDueOn: number;
