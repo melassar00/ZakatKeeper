@@ -1,7 +1,8 @@
-// types/user.ts
-import { Decimal128, Double } from "mongodb";
+import { Double } from "mongodb";
 
 export interface AccountBalance {
+    id: number;
     name: string;
-    balance: Double;
+    type: string;
+    balance: number;
 }

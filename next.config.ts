@@ -1,7 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+module.exports = {
+    experimental: {
+        appDir: true, // Ensure the App Router is enabled
+    },
 };
-
-export default nextConfig;
