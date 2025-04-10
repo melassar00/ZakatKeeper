@@ -1,35 +1,239 @@
 "use client";
 
-import { Container, Typography, Card, CardContent, Button, Box } from "@mui/material";
+import {
+    Container,
+    Typography,
+    Card,
+    CardContent,
+    Button,
+    Box,
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    TableContainer,
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { ZakatService } from "./services/zakat";
+import React, { useState } from "react";
+import Calendar, { CalendarProps } from "react-calendar";
+import moment from "moment-hijri";
+import "react-calendar/dist/Calendar.css";
+import { Year } from "../../types/years";
+import Stepper from "@mui/material/Stepper";
+import Step from "@mui/material/Step";
+import StepLabel from "@mui/material/StepLabel";
+
+const steps = ["Enter Assets", "Enter Liabilities", "Zakat Results"];
 
 export default function HomePage() {
-	// Example data: you can later replace this with dynamic data or API calls
-	const currentYear = new Date().getFullYear();
-	const currentZakat = 650; // Replace with your calculated logic
+    const [date, setDate] = useState<Date>(new Date());
+    moment.locale("en");
+    const handleChange: CalendarProps["onChange"] = (value) => {
+        // value can be null, Date, or [Date, Date]
+        if (value instanceof Date) {
+            setDate(value);
+        } else if (Array.isArray(value) && value[0] instanceof Date) {
+            setDate(value[0]); // use the first date in the range
+        }
+    };
 
-	const handleAddZakat = () => {
-		// Placeholder for your add/update logic
-		alert("Add or update today's Zakat record!");
-	};
+    const [activeStep, setActiveStep] = React.useState(0);
+    const [skipped, setSkipped] = React.useState(new Set<number>());
 
-	return (
-		<Container maxWidth="md" sx={{ mt: 4 }}>
-			<Typography variant="h4" gutterBottom>
-				Welcome to ZakatKeeper
-			</Typography>
-			<Card sx={{ mb: 4 }}>
-				<CardContent>
-					<Typography variant="h6">Zakat Due for {currentYear}:</Typography>
-					<Typography variant="h4" color="primary">
-						${currentZakat}
-					</Typography>
-					<Box mt={2}>
-						<Button variant="contained" color="primary" onClick={handleAddZakat}>
-							Add/Update This Year's Zakat
-						</Button>
-					</Box>
-				</CardContent>
-			</Card>
-		</Container>
-	);
+    const isStepOptional = (step: number) => {
+        return false;
+    };
+
+    const isStepSkipped = (step: number) => {
+        return skipped.has(step);
+    };
+
+    const handleNext = () => {
+        let newSkipped = skipped;
+        if (isStepSkipped(activeStep)) {
+            newSkipped = new Set(newSkipped.values());
+            newSkipped.delete(activeStep);
+        }
+
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+        setSkipped(newSkipped);
+    };
+
+    const handleBack = () => {
+        setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    };
+
+    const handleSkip = () => {
+        if (!isStepOptional(activeStep)) {
+            // You probably want to guard against something like this,
+            // it should never occur unless someone's actively trying to break something.
+            throw new Error("You can't skip a step that isn't optional.");
+        }
+
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+        setSkipped((prevSkipped) => {
+            const newSkipped = new Set(prevSkipped.values());
+            newSkipped.add(activeStep);
+            return newSkipped;
+        });
+    };
+
+    const handleReset = () => {
+        setActiveStep(0);
+    };
+
+    // Example data: you can later replace this with dynamic data or API calls
+    const currentYear = new Date().getFullYear();
+    const currentZakat = 650; // Replace with your calculated logic
+
+    const handleAddZakat = () => {
+        // Placeholder for your add/update logic
+        alert("Add or update today's Zakat record!");
+    };
+
+    const [accordionData, setAccordionData] = React.useState([] as Year[]);
+
+    React.useEffect(() => {
+        ZakatService.getZakat("omar").then((result) => {
+            var tempYears = result.years;
+            tempYears.sort((a, b) => b.year.localeCompare(a.year));
+
+            var tempAccordionData = [] as Year[];
+            for (var i = 0; i < tempYears.length; i++) {
+                if (tempYears[i].year != moment().year.toString()) {
+                    var tempAccordion = {
+                        year: tempYears[i].year,
+                        accountBalances: tempYears[i].accountBalances,
+                        totalAssetValue: tempYears[i].totalAssetValue,
+                        totalDebtValue: tempYears[i].totalDebtValue,
+                        zakatDueOn: tempYears[i].zakatDueOn,
+                    };
+                    tempAccordionData[i] = tempAccordion;
+                }
+            }
+            setAccordionData(tempAccordionData);
+        });
+    }, []);
+    return (
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Typography variant="h4" gutterBottom>
+                Welcome to ZakatKeeper
+            </Typography>
+            <Card sx={{ mb: 4 }}>
+                <CardContent>
+                    <Box sx={{ width: "100%" }}>
+                        <Stepper activeStep={activeStep}>
+                            {steps.map((label, index) => {
+                                const stepProps: { completed?: boolean } = {};
+                                const labelProps: {
+                                    optional?: React.ReactNode;
+                                } = {};
+                                if (isStepOptional(index)) {
+                                    labelProps.optional = <Typography variant="caption">Optional</Typography>;
+                                }
+                                if (isStepSkipped(index)) {
+                                    stepProps.completed = false;
+                                }
+                                return (
+                                    <Step key={label} {...stepProps}>
+                                        <StepLabel {...labelProps}>{label}</StepLabel>
+                                    </Step>
+                                );
+                            })}
+                        </Stepper>
+                        {activeStep === steps.length && (
+                            <React.Fragment>
+                                <Typography sx={{ mt: 2, mb: 1 }}>All steps completed - you&apos;re finished</Typography>
+                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                    <Box sx={{ flex: "1 1 auto" }} />
+                                    <Button onClick={handleReset}>Reset</Button>
+                                </Box>
+                            </React.Fragment>
+                        )}
+                        {activeStep === steps.length - 1 && (
+                            <React.Fragment>
+                                <Typography variant="h6">Zakat Due for {currentYear}:</Typography>
+                                <Typography variant="h4" color="primary">
+                                    ${currentZakat}
+                                </Typography>
+                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                    <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
+                                        Back
+                                    </Button>
+                                    <Box sx={{ flex: "1 1 auto" }} />
+                                    {isStepOptional(activeStep) && (
+                                        <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
+                                            Skip
+                                        </Button>
+                                    )}
+                                    <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
+                                </Box>
+                            </React.Fragment>
+                        )}
+
+                        {activeStep < steps.length - 1 && (
+                            <React.Fragment>
+                                <Typography sx={{ mt: 2, mb: 1 }}>Step {activeStep + 1}</Typography>
+                                <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
+                                    <Button color="inherit" disabled={activeStep === 0} onClick={handleBack} sx={{ mr: 1 }}>
+                                        Back
+                                    </Button>
+                                    <Box sx={{ flex: "1 1 auto" }} />
+                                    {isStepOptional(activeStep) && (
+                                        <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
+                                            Skip
+                                        </Button>
+                                    )}
+                                    <Button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</Button>
+                                </Box>
+                            </React.Fragment>
+                        )}
+                    </Box>
+                </CardContent>
+            </Card>
+            <>
+                {accordionData.map((item, index) => (
+                    <Accordion key={index}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography>
+                                {item.year} - Net Assets: ${item.zakatDueOn?.toString()}
+                            </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                            <TableContainer>
+                                <Table aria-label="users table">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Name</TableCell>
+                                            <TableCell>Balance</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {item.accountBalances.map((account, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{account.name}</TableCell>
+                                                <TableCell>${account.balance.toString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </AccordionDetails>
+                    </Accordion>
+                ))}
+            </>
+            TODO - Move this somewhere else Select Zakat Due Date
+            <Calendar onChange={handleChange} value={date} />
+            <div style={{ marginTop: "1rem" }}>
+                <strong>Gregorian:</strong> {moment(date).format("DD of MMMM")}
+                <br />
+                <strong>Hijri:</strong> {moment(date).format("iDD of iMMMM")}
+            </div>
+        </Container>
+    );
 }
