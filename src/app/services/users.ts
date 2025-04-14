@@ -5,7 +5,6 @@ export const UserService = {
         try {
             const rawResponse = await fetch(`/api/users/${userID}`);
             const content = await rawResponse.json();
-            console.log(content);
             if (content) {
                 return content[0] as User;
             } else {

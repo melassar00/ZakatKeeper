@@ -21,7 +21,6 @@ import {
     Select,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-// import { ZakatService } from "./services/zakat";
 import React, { useState } from "react";
 import { CalendarProps } from "react-calendar";
 import moment from "moment-hijri";
@@ -32,6 +31,7 @@ import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
 import { useUserContext } from "../../../context/UserContext";
 import { ZakatService } from "../services/zakat";
+import { GoldService } from "../services/gold";
 import { Zakat } from "../../../types/zakat";
 import { AccountBalance } from "../../../types/accountBalance";
 
@@ -117,11 +117,12 @@ export default function Dashboard() {
         setActiveStep((prevActiveStep) => prevActiveStep + 1);
 
         if (activeStep + 1 === 2) {
-            if (getLastYear && assetSum - debtSum >= getLastYear.zakatDueOn) {
-                setCurrentZakat(getLastYear.zakatDueOn * 0.025);
-            } else if (zakatThisYear) {
-                setCurrentZakat(zakatThisYear.zakatDueOn * 0.025);
-            }
+            if (assetSum)
+                if (getLastYear && assetSum - debtSum >= getLastYear.zakatDueOn) {
+                    setCurrentZakat(getLastYear.zakatDueOn * 0.025);
+                } else if (zakatThisYear) {
+                    setCurrentZakat(zakatThisYear.zakatDueOn * 0.025);
+                }
         }
         setSkipped(newSkipped);
     };
@@ -161,11 +162,17 @@ export default function Dashboard() {
     };
 
     const [accordionData, setAccordionData] = React.useState([] as ZakatYear[]);
-
+    const [goldPerGram, setGoldPerGram] = React.useState(0);
+    const [nisab, setNisab] = React.useState(0);
     React.useEffect(() => {
         if (user) {
             const zakat = user.years.find((year) => year.year === currentYear);
             setZakatThisYear(zakatThisYear);
+
+            GoldService.getGoldInfo().then((result: any) => {
+                setGoldPerGram(result.price_gram_24k);
+                setNisab(result.price_gram_24k * 87.48);
+            });
             // var tempYears = user.years;
             // tempYears.sort((a, b) => b.year.localeCompare(a.year));
             // var tempAccordionData = [] as Year[];
